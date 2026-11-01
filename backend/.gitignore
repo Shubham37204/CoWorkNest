@@ -1,0 +1,88 @@
+# Maven / Java build output
+target/
+build/
+out/
+bin/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# Keep the Maven wrapper tracked
+!.mvn/
+!.mvn/wrapper/
+!mvnw
+!mvnw.cmd
+!**/src/main/**/target/
+!**/src/test/**/target/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+application*.properties
+!application.properties
+!src/main/resources/application.properties
+application-local.properties
+application-dev.properties
+application-prod.properties
+secrets/
+config/*.secret
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.secret
+
+# Local data and uploaded files
+*.db
+*.sqlite
+*.sqlite3
+data/
+local-data/
+uploads/
+storage/
+
+# Generated content
+generated/
+
+# OS files
+.DS_Store
+Thumbs.db
