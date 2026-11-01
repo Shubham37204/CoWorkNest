@@ -1,7 +1,7 @@
 package javaProject.backend.workspace;
 import java.util.List;
-import javaProject.backend.user.UserRepository;
 import javaProject.backend.user.AppUser;
+import javaProject.backend.user.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +9,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class WorkspaceService {
+
+    private static final int MAX_NAME_LENGTH = 150;
+    private static final int MAX_DESCRIPTION_LENGTH = 1000;
 
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository memberRepository;
@@ -25,57 +28,15 @@ public class WorkspaceService {
     }
 
     @Transactional
-    public WorkspaceView create(
-            String email,
-            String name,
-            String description
-    ) {
+    public WorkspaceView create(String email, String name, String description) {
         AppUser user = findUser(email);
-
-        if (name == null || name.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Workspace name is required"
-            );
-        }
-
-        String cleanName = name.trim();
-
-        if (cleanName.length() > 150) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Workspace name must be at most 150 characters"
-            );
-        }
-
-        /*
-        // [OLD CODE - Before validation update]:
-        // Description length was not explicitly checked in the service layer (relied solely on controller Bean Validation).
-        Workspace workspace = workspaceRepository.saveAndFlush(
-                new Workspace(cleanName, description)
-        );
-        */
-
-        // [NEW CODE]:
-        // Validate description length (max 1000 chars) as specified in API documentation Section 5.1 & 6
-        if (description != null && description.length() > 1000) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Workspace description must be at most 1000 characters"
-            );
-        }
+        String cleanName = requireValidName(name);
+        String cleanDescription = normalizeDescription(description);
 
         Workspace workspace = workspaceRepository.saveAndFlush(
-                new Workspace(cleanName, description)
+                new Workspace(cleanName, cleanDescription)
         );
-
-        WorkspaceMember owner = new WorkspaceMember(
-                workspace,
-                user,
-                WorkspaceRole.OWNER
-        );
-
-        memberRepository.save(owner);
+        memberRepository.save(new WorkspaceMember(workspace, user, WorkspaceRole.OWNER));
 
         return WorkspaceView.of(workspace, WorkspaceRole.OWNER);
     }
@@ -106,44 +67,15 @@ public class WorkspaceService {
         WorkspaceMember membership = findMembership(email, workspaceId);
         requireOwner(membership);
 
-        if (name == null || name.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Workspace name is required"
-            );
-        }
-
-        if (name.trim().length() > 150) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Workspace name must be at most 150 characters"
-            );
-        }
-
-        /*
-        // [OLD CODE - Before validation update]:
-        // Description length was not explicitly checked in the service layer before updating entity.
-        Workspace workspace = membership.getWorkspace();
-        workspace.setName(name.trim());
-        workspace.setDescription(description);
-
-        workspaceRepository.saveAndFlush(workspace);
-        return WorkspaceView.of(workspace, membership.getRole());
-        */
-
-        // [NEW CODE]:
-        // Validate description length (max 1000 chars) as specified in API documentation Section 5.4 & 6
-        if (description != null && description.length() > 1000) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Workspace description must be at most 1000 characters"
-            );
-        }
+        // Validate after authorization: non-members always get 404, whatever the payload.
+        String cleanName = requireValidName(name);
+        String cleanDescription = normalizeDescription(description);
 
         Workspace workspace = membership.getWorkspace();
-        workspace.setName(name.trim());
-        workspace.setDescription(description);
+        workspace.setName(cleanName);
+        workspace.setDescription(cleanDescription);
 
+        // Flush so @UpdateTimestamp runs and the returned updatedAt is current.
         workspaceRepository.saveAndFlush(workspace);
         return WorkspaceView.of(workspace, membership.getRole());
     }
@@ -153,19 +85,9 @@ public class WorkspaceService {
         WorkspaceMember membership = findMembership(email, workspaceId);
         requireOwner(membership);
 
-        /*
-        // [OLD CODE]:
-        // workspaceRepository.delete(membership.getWorkspace());
-        */
-
-        // [NEW CODE]:
-        // Bulk JPQL delete bypasses the persistence context, so we use
-        // flushAutomatically + clearAutomatically on the @Modifying query
-        // to (1) flush pending state before the bulk op and (2) evict all
-        // stale entities afterwards.  After the clear, the previously
-        // loaded 'membership' and its 'workspace' are detached, so we
-        // must use deleteById (which re-fetches internally) instead of
-        // passing the detached entity reference.
+        // Members first. The bulk delete clears the persistence context, so the loaded
+        // membership no longer references the workspace when it is removed.
+        // deleteAllByWorkspaceId has no authorization of its own: call it only after requireOwner.
         memberRepository.deleteAllByWorkspaceId(workspaceId);
         workspaceRepository.deleteById(workspaceId);
     }
@@ -178,12 +100,10 @@ public class WorkspaceService {
                 ));
     }
 
-    private WorkspaceMember findMembership(
-            String email,
-            Long workspaceId
-    ) {
+    private WorkspaceMember findMembership(String email, Long workspaceId) {
         AppUser user = findUser(email);
 
+        // Not a member and no such workspace look identical: 404, never 403.
         return memberRepository
                 .findWithWorkspace(workspaceId, user.getId())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -199,5 +119,32 @@ public class WorkspaceService {
                     "Only the workspace owner can perform this action"
             );
         }
+    }
+
+    private static String requireValidName(String name) {
+        if (name == null || name.isBlank()) {
+            throw badRequest("Workspace name is required");
+        }
+        String clean = name.trim();
+        if (clean.length() > MAX_NAME_LENGTH) {
+            throw badRequest("Workspace name must be at most " + MAX_NAME_LENGTH + " characters");
+        }
+        return clean;
+    }
+
+    private static String normalizeDescription(String description) {
+        if (description == null || description.isBlank()) {
+            return null;
+        }
+        String clean = description.trim();
+        if (clean.length() > MAX_DESCRIPTION_LENGTH) {
+            throw badRequest(
+                    "Workspace description must be at most " + MAX_DESCRIPTION_LENGTH + " characters");
+        }
+        return clean;
+    }
+
+    private static ResponseStatusException badRequest(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 }

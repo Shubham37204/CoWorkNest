@@ -21,3 +21,4 @@ export function WorkspaceCard({ workspace }: { workspace: Workspace }) {
     </Link>
   );
 }
+//Role:"One tile on the listing"
