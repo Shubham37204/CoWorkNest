@@ -1,0 +1,35 @@
+# ─── IDE / Editor ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# ─── OS generated ────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Environment / Secrets ───────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── Node / Frontend ─────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# ─── Java / Maven / Backend ──────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/timing.properties
