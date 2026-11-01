@@ -3,6 +3,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -25,4 +26,8 @@ public interface WorkspaceMemberRepository
     Optional<WorkspaceMember> findWithWorkspace(
             @Param("workspaceId") Long workspaceId,
             @Param("userId") Long userId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from WorkspaceMember m where m.workspace.id = :workspaceId")
+    void deleteAllByWorkspaceId(@Param("workspaceId") Long workspaceId);
 }

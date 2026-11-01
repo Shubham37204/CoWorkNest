@@ -1,8 +1,9 @@
+import { WorkspaceList } from "@/components/workspace/workspace-list";
+
 export default function DashboardPage() {
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p className="mt-2 text-gray-600">Welcome to your CollabSpace workspace.</p>
+    <main className="mx-auto max-w-4xl p-6">
+      <WorkspaceList />
     </main>
   );
 }

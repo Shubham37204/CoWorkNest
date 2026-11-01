@@ -48,6 +48,23 @@ public class WorkspaceService {
             );
         }
 
+        /*
+        // [OLD CODE - Before validation update]:
+        // Description length was not explicitly checked in the service layer (relied solely on controller Bean Validation).
+        Workspace workspace = workspaceRepository.saveAndFlush(
+                new Workspace(cleanName, description)
+        );
+        */
+
+        // [NEW CODE]:
+        // Validate description length (max 1000 chars) as specified in API documentation Section 5.1 & 6
+        if (description != null && description.length() > 1000) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Workspace description must be at most 1000 characters"
+            );
+        }
+
         Workspace workspace = workspaceRepository.saveAndFlush(
                 new Workspace(cleanName, description)
         );
@@ -103,6 +120,26 @@ public class WorkspaceService {
             );
         }
 
+        /*
+        // [OLD CODE - Before validation update]:
+        // Description length was not explicitly checked in the service layer before updating entity.
+        Workspace workspace = membership.getWorkspace();
+        workspace.setName(name.trim());
+        workspace.setDescription(description);
+
+        workspaceRepository.saveAndFlush(workspace);
+        return WorkspaceView.of(workspace, membership.getRole());
+        */
+
+        // [NEW CODE]:
+        // Validate description length (max 1000 chars) as specified in API documentation Section 5.4 & 6
+        if (description != null && description.length() > 1000) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Workspace description must be at most 1000 characters"
+            );
+        }
+
         Workspace workspace = membership.getWorkspace();
         workspace.setName(name.trim());
         workspace.setDescription(description);
@@ -116,7 +153,21 @@ public class WorkspaceService {
         WorkspaceMember membership = findMembership(email, workspaceId);
         requireOwner(membership);
 
-        workspaceRepository.delete(membership.getWorkspace());
+        /*
+        // [OLD CODE]:
+        // workspaceRepository.delete(membership.getWorkspace());
+        */
+
+        // [NEW CODE]:
+        // Bulk JPQL delete bypasses the persistence context, so we use
+        // flushAutomatically + clearAutomatically on the @Modifying query
+        // to (1) flush pending state before the bulk op and (2) evict all
+        // stale entities afterwards.  After the clear, the previously
+        // loaded 'membership' and its 'workspace' are detached, so we
+        // must use deleteById (which re-fetches internally) instead of
+        // passing the detached entity reference.
+        memberRepository.deleteAllByWorkspaceId(workspaceId);
+        workspaceRepository.deleteById(workspaceId);
     }
 
     private AppUser findUser(String email) {
