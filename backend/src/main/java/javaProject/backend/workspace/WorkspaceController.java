@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/workspaces")
@@ -44,6 +45,20 @@ public class WorkspaceController {
                 authentication.getName(),
                 request.name(),
                 request.description()
+        );
+    }
+
+    @PostMapping("/{workspaceId}/members")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkspaceMemberView addMember(
+            Authentication authentication,
+            @PathVariable Long workspaceId,
+            @Valid @RequestBody AddWorkspaceMemberRequest request
+    ) {
+        return workspaceService.addMember(
+                authentication.getName(),
+                workspaceId,
+                request
         );
     }
 
