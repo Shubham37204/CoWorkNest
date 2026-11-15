@@ -42,65 +42,65 @@ public class WorkspaceService {
         return WorkspaceView.of(workspace, WorkspaceRole.OWNER);
     }
 
-    @Transactional
-    public WorkspaceMemberView addMember(
-            String ownerEmail,
-            Long workspaceId,
-            AddWorkspaceMemberRequest request
-    ) {
-        // 1. Verify that the current user belongs to the workspace.
-        WorkspaceMember ownerMembership =
-                findMembership(ownerEmail, workspaceId);
-
-        // 2. Only OWNER can add members.
-        requireOwner(ownerMembership);
-
-        // 3. OWNER cannot be assigned through this endpoint.
-        if (request.role() == WorkspaceRole.OWNER) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "OWNER role cannot be assigned through this endpoint"
-            );
-        }
-
-        // 4. Normalize the email.
-        String memberEmail = request.email()
-                .trim()
-                .toLowerCase(Locale.ROOT);
-
-        // 5. Find the registered user.
-        AppUser user = userRepository.findByEmail(memberEmail)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Registered user not found"
-                ));
-
-        // 6. Check whether the user is already a member.
-        WorkspaceMemberId membershipId = new WorkspaceMemberId(
-                workspaceId,
-                user.getId()
-        );
-
-        if (memberRepository.existsById(membershipId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "User is already a member of this workspace"
-            );
-        }
-
-        // 7. Create and save membership.
-        WorkspaceMember newMember = new WorkspaceMember(
-                ownerMembership.getWorkspace(),
-                user,
-                request.role()
-        );
-
-        WorkspaceMember savedMember =
-                memberRepository.saveAndFlush(newMember);
-
-        // 8. Return member details.
-        return WorkspaceMemberView.of(savedMember);
-    }
+//    @Transactional
+//    public WorkspaceMemberView addMember(
+//            String ownerEmail,
+//            Long workspaceId,
+//            AddWorkspaceMemberRequest request
+//    ) {
+//        // 1. Verify that the current user belongs to the workspace.
+//        WorkspaceMember ownerMembership =
+//                findMembership(ownerEmail, workspaceId);
+//
+//        // 2. Only OWNER can add members.
+//        requireOwner(ownerMembership);
+//
+//        // 3. OWNER cannot be assigned through this endpoint.
+//        if (request.role() == WorkspaceRole.OWNER) {
+//            throw new ResponseStatusException(
+//                    HttpStatus.BAD_REQUEST,
+//                    "OWNER role cannot be assigned through this endpoint"
+//            );
+//        }
+//
+//        // 4. Normalize the email.
+//        String memberEmail = request.email()
+//                .trim()
+//                .toLowerCase(Locale.ROOT);
+//
+//        // 5. Find the registered user.
+//        AppUser user = userRepository.findByEmail(memberEmail)
+//                .orElseThrow(() -> new ResponseStatusException(
+//                        HttpStatus.NOT_FOUND,
+//                        "Registered user not found"
+//                ));
+//
+//        // 6. Check whether the user is already a member.
+//        WorkspaceMemberId membershipId = new WorkspaceMemberId(
+//                workspaceId,
+//                user.getId()
+//        );
+//
+//        if (memberRepository.existsById(membershipId)) {
+//            throw new ResponseStatusException(
+//                    HttpStatus.CONFLICT,
+//                    "User is already a member of this workspace"
+//            );
+//        }
+//
+//        // 7. Create and save membership.
+//        WorkspaceMember newMember = new WorkspaceMember(
+//                ownerMembership.getWorkspace(),
+//                user,
+//                request.role()
+//        );
+//
+//        WorkspaceMember savedMember =
+//                memberRepository.saveAndFlush(newMember);
+//
+//        // 8. Return member details.
+//        return WorkspaceMemberView.of(savedMember);
+//    }
 
     @Transactional(readOnly = true)
     public List<WorkspaceView> listMine(String email) {

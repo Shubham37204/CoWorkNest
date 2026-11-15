@@ -30,4 +30,15 @@ public interface WorkspaceMemberRepository
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from WorkspaceMember m where m.workspace.id = :workspaceId")
     void deleteAllByWorkspaceId(@Param("workspaceId") Long workspaceId);
+
+    @Query("""
+        select m from WorkspaceMember m
+        join fetch m.user
+        where m.workspace.id = :workspaceId
+        order by m.joinedAt asc
+        """)
+    List<WorkspaceMember> findAllWithUserByWorkspaceId(
+            @Param("workspaceId") Long workspaceId
+    );
+
 }
